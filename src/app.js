@@ -11,7 +11,10 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Enable CORS and JSON parsing
-app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+app.use(cors({
+  origin: ['https://vastu-ai-87jc.vercel.app', 'http://localhost:5000'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Import middlewares & services
