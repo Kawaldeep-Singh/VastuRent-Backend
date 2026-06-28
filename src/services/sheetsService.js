@@ -196,7 +196,7 @@ function buildHeaderMap(headers = []) {
   // Phase 1: Exact Matches
   Object.entries(FIELD_ALIASES).forEach(([field, aliases]) => {
     const aliasSet = aliases.map(cleanHeader);
-    const index = normalized.findIndex((header, idx) => 
+    const index = normalized.findIndex((header, idx) =>
       !claimedIndexes.has(idx) && aliasSet.includes(header)
     );
     if (index !== -1) {
@@ -210,7 +210,7 @@ function buildHeaderMap(headers = []) {
     if (map[field] !== undefined) return; // already mapped in Phase 1
 
     const aliasSet = aliases.map(cleanHeader);
-    const index = normalized.findIndex((header, idx) => 
+    const index = normalized.findIndex((header, idx) =>
       !claimedIndexes.has(idx) && aliasSet.some(alias => header.includes(alias) || alias.includes(header))
     );
     if (index !== -1) {
@@ -480,7 +480,7 @@ class SheetsService {
       return allListings;
     } catch (error) {
       console.error(`❌ Sheets API error: ${error.message}`);
-      
+
       // If we have stale cache, use it
       if (this.cachedListings && this.cachedListings.length > 0) {
         console.log('📦 Using stale cache as fallback...');
@@ -565,7 +565,7 @@ class SheetsService {
     try {
       const metadata = await this.sheets.spreadsheets.get({ spreadsheetId: this.spreadsheetId });
       const firstSheetTitle = metadata.data.sheets[0].properties.title;
-      
+
       // Fetch headers dynamically to figure out which column is which
       let headerRow = [];
       try {
@@ -594,7 +594,7 @@ class SheetsService {
           listing.sector || '',
           listing.additionalNotes || ''
         ];
-        
+
         await this.sheets.spreadsheets.values.append({
           spreadsheetId: this.spreadsheetId,
           range: `'${escapeSheetName(firstSheetTitle)}'!A1`,
@@ -744,5 +744,7 @@ class SheetsService {
     }
   }
 }
+
+// tfsa
 
 module.exports = new SheetsService();
