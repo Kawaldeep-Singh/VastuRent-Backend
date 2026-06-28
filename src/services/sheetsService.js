@@ -302,6 +302,7 @@ class SheetsService {
     this.sheets = null;
     this.spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
     this.mockMode = process.env.MOCK_MODE === 'true';
+    this.lastError = null;
 
     // ─── In-memory cache ─────────────────────────────────
     this.cachedListings = null;
@@ -313,6 +314,7 @@ class SheetsService {
 
   initAuth() {
     try {
+      this.lastError = null;
       if (this.mockMode) {
         console.log('📋 SheetsService is running in MOCK_MODE.');
         return;
@@ -335,7 +337,11 @@ class SheetsService {
       }
 
       if (!credentials || !this.spreadsheetId) {
-        console.warn('⚠️  Google Sheets credentials or Spreadsheet ID missing → MOCK_MODE.');
+        const missing = [];
+        if (!credentials) missing.push('Credentials JSON');
+        if (!this.spreadsheetId) missing.push('Spreadsheet ID');
+        this.lastError = `Missing configuration: ${missing.join(', ')}`;
+        console.warn(`⚠️  Google Sheets credentials or Spreadsheet ID missing → MOCK_MODE. (${this.lastError})`);
         this.mockMode = true;
         return;
       }
@@ -352,6 +358,7 @@ class SheetsService {
       console.log(`📋 Owner Sheet ID: ${this.spreadsheetId}`);
     } catch (error) {
       console.error('❌ Failed to initialize Google Sheets:', error.message);
+      this.lastError = error.message;
       this.mockMode = true;
     }
   }
