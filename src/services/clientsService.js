@@ -156,8 +156,8 @@ class ClientsService {
       }
 
       if (!credentials || !this.spreadsheetId) {
-        console.warn('⚠️  ClientsService: missing credentials or sheet ID → MOCK_MODE');
-        this.mockMode = true;
+        console.warn('⚠️  ClientsService: missing credentials or sheet ID.');
+        this.mockMode = false;
         return;
       }
 
@@ -174,7 +174,7 @@ class ClientsService {
         : '✅ (separate client spreadsheet)'}`);
     } catch (e) {
       console.error('❌ ClientsService auth failed:', e.message);
-      this.mockMode = true;
+      this.mockMode = false;
     }
   }
 
@@ -194,7 +194,7 @@ class ClientsService {
 
   // ── GET all clients — reads FIRST sheet of client spreadsheet ────────────
   async getClients() {
-    if (this.mockMode || !this.sheets) return this.mockClients;
+    if (!this.sheets) throw new Error('Google Sheets API is not connected. Cannot get clients.');
     if (this.isCacheValid()) return this.cachedClients;
 
     try {
@@ -241,12 +241,7 @@ class ClientsService {
 
   // ── ADD client ────────────────────────────────────────────────────────────
   async addClient(client) {
-    if (this.mockMode || !this.sheets) {
-      const mock = { ...client, sourceRow: this.mockClients.length + 2 };
-      this.mockClients.push(mock);
-      this.invalidateCache();
-      return mock;
-    }
+    if (!this.sheets) throw new Error('Google Sheets API is not connected. Cannot add client.');
 
     try {
       const meta = await this.sheets.spreadsheets.get({ spreadsheetId: this.spreadsheetId });
@@ -279,12 +274,7 @@ class ClientsService {
 
   // ── UPDATE client by sheet row index ─────────────────────────────────────
   async updateClient(rowIndex, client) {
-    if (this.mockMode || !this.sheets) {
-      const idx = this.mockClients.findIndex(c => c.sourceRow === rowIndex);
-      if (idx !== -1) Object.assign(this.mockClients[idx], client);
-      this.invalidateCache();
-      return client;
-    }
+    if (!this.sheets) throw new Error('Google Sheets API is not connected. Cannot update client.');
 
     try {
       const meta = await this.sheets.spreadsheets.get({ spreadsheetId: this.spreadsheetId });
@@ -316,12 +306,7 @@ class ClientsService {
 
   // ── DELETE client by sheet row index ─────────────────────────────────────
   async deleteClient(rowIndex) {
-    if (this.mockMode || !this.sheets) {
-      const idx = this.mockClients.findIndex(c => c.sourceRow === rowIndex);
-      if (idx !== -1) this.mockClients.splice(idx, 1);
-      this.invalidateCache();
-      return true;
-    }
+    if (!this.sheets) throw new Error('Google Sheets API is not connected. Cannot delete client.');
 
     try {
       const meta = await this.sheets.spreadsheets.get({ spreadsheetId: this.spreadsheetId });

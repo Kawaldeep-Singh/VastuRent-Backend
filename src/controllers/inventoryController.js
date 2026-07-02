@@ -29,6 +29,15 @@ exports.addListing = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing required fields: Society Name, Sector, and Rent are required.' });
     }
 
+    if (ownerContact) {
+      const listings = await sheetsService.getListings();
+      const cleanPhone = str => (str || '').replace(/\D/g, '').slice(-10);
+      const inputPhone = cleanPhone(ownerContact);
+      if (inputPhone && listings.some(l => cleanPhone(l.ownerContact) === inputPhone)) {
+        return res.status(400).json({ success: false, error: 'A property listing with this owner contact already exists.' });
+      }
+    }
+
     const listingData = {
       propertyName:    propertyName || `${projectName} Sector ${sector}`,
       projectName,
@@ -64,7 +73,7 @@ exports.updateListing = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid row index.' });
     }
 
-    const { propertyName, projectName, sector, bhk, rent, furnishing, ownerName, ownerContact, additionalNotes } = req.body;
+    const { propertyName, projectName, sector, bhk, rent, furnishing, ownerName, ownerContact, additionalNotes, availability } = req.body;
 
     const listingData = {
       propertyName:    propertyName || '',
@@ -75,7 +84,8 @@ exports.updateListing = async (req, res) => {
       furnishing:      furnishing || '',
       ownerName:       ownerName || '',
       ownerContact:    ownerContact || '',
-      additionalNotes: additionalNotes || ''
+      additionalNotes: additionalNotes || '',
+      availability:    availability || 'Available'
     };
 
     await sheetsService.updateListing(rowIndex, listingData);

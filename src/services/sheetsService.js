@@ -174,7 +174,8 @@ const FALLBACK_COLUMNS = {
   propertyName: 5,
   projectName: 6,
   sector: 7,
-  additionalNotes: 8
+  additionalNotes: 8,
+  availability: 9
 };
 
 function cleanHeader(value) {
@@ -341,8 +342,8 @@ class SheetsService {
         if (!credentials) missing.push('Credentials JSON');
         if (!this.spreadsheetId) missing.push('Spreadsheet ID');
         this.lastError = `Missing configuration: ${missing.join(', ')}`;
-        console.warn(`⚠️  Google Sheets credentials or Spreadsheet ID missing → MOCK_MODE. (${this.lastError})`);
-        this.mockMode = true;
+        console.warn(`⚠️  Google Sheets credentials or Spreadsheet ID missing. (${this.lastError})`);
+        this.mockMode = false;
         return;
       }
 
@@ -359,7 +360,7 @@ class SheetsService {
     } catch (error) {
       console.error('❌ Failed to initialize Google Sheets:', error.message);
       this.lastError = error.message;
-      this.mockMode = true;
+      this.mockMode = false;
     }
   }
 
@@ -391,10 +392,8 @@ class SheetsService {
   }
 
   async getListings() {
-    // 1. Mock mode — return immediately
-    if (this.mockMode || !this.sheets) {
-      console.log('📋 Fetching listings from Mock Database...');
-      return MOCK_INVENTORY;
+    if (!this.sheets) {
+      throw new Error('Google Sheets API is not connected. Please check your credentials.');
     }
 
     // 2. Return cached data if available
@@ -415,8 +414,7 @@ class SheetsService {
       console.log(`\n📊 Sheets Found: ${sheetNames.length} → [${sheetNames.join(', ')}]`);
 
       if (sheetNames.length === 0) {
-        console.warn('⚠️  No sheets found → Mock Database.');
-        return MOCK_INVENTORY;
+        throw new Error('No valid sheets found in the connected Google Spreadsheet.');
       }
 
       // Use batchGet to read ALL sheets in a single API call
@@ -469,8 +467,8 @@ class SheetsService {
       console.log(`\n📊 Total Records: ${allListings.length}\n`);
 
       if (allListings.length === 0) {
-        console.warn('⚠️  All sheets empty → Mock Database.');
-        return MOCK_INVENTORY;
+        console.warn('⚠️  All sheets empty.');
+        return [];
       }
 
       // Cache the results
@@ -487,8 +485,7 @@ class SheetsService {
         return this.cachedListings;
       }
 
-      console.log('📋 Falling back to Mock Database...');
-      return MOCK_INVENTORY;
+      throw new Error(`Google Sheets error: ${error.message}`);
     }
   }
 
@@ -539,7 +536,7 @@ class SheetsService {
         console.log('📦 Using stale cache...');
         return this.cachedListings;
       }
-      return MOCK_INVENTORY;
+      return [];
     }
 
     // Cache the results
@@ -549,17 +546,8 @@ class SheetsService {
   }
 
   async addListing(listing) {
-    if (this.mockMode || !this.sheets) {
-      console.log('Mock Mode: Added listing to memory dashboard.');
-      const newListing = {
-        ...listing,
-        bhk: listing.bhk || 0,
-        bhkLabel: String(listing.bhk || '').trim(),
-        unitType: inferUnitType(listing.bhk, listing.propertyName, listing.projectName),
-        rent: parseNumber(listing.rent) || 0,
-      };
-      MOCK_INVENTORY.push(newListing);
-      return newListing;
+    if (!this.sheets) {
+      throw new Error('Google Sheets API is not connected. Cannot add listing.');
     }
 
     try {
@@ -581,7 +569,7 @@ class SheetsService {
       if (headerRow.length === 0) {
         // If sheet is completely empty, write headers first, then write the listing
         const defaultHeaders = [
-          'Name', 'Phone', 'Furnishing Status', 'BHK', 'Rent', 'Unit', 'Socity Name', 'Sector', 'Remarks'
+          'Name', 'Phone', 'Furnishing Status', 'BHK', 'Rent', 'Unit', 'Socity Name', 'Sector', 'Remarks', 'Status'
         ];
         const defaultRow = [
           listing.ownerName || '',
@@ -592,7 +580,8 @@ class SheetsService {
           listing.propertyName || '',
           listing.projectName || '',
           listing.sector || '',
-          listing.additionalNotes || ''
+          listing.additionalNotes || '',
+          listing.availability || 'Available'
         ];
 
         await this.sheets.spreadsheets.values.append({
@@ -604,7 +593,7 @@ class SheetsService {
       } else {
         // Map fields to correct columns based on actual headers
         const headerMap = buildHeaderMap(headerRow);
-        const newRow = new Array(Math.max(headerRow.length, 9)).fill('');
+        const newRow = new Array(Math.max(headerRow.length, 10)).fill('');
 
         const fieldMappings = {
           ownerName: listing.ownerName || '',
@@ -615,7 +604,8 @@ class SheetsService {
           propertyName: listing.propertyName || '',
           projectName: listing.projectName || '',
           sector: listing.sector || '',
-          additionalNotes: listing.additionalNotes || ''
+          additionalNotes: listing.additionalNotes || '',
+          availability: listing.availability || 'Available'
         };
 
         Object.entries(fieldMappings).forEach(([field, val]) => {
@@ -652,11 +642,8 @@ class SheetsService {
    * Update an existing property row by its sheet row number (1-indexed)
    */
   async updateListing(rowIndex, listing) {
-    if (this.mockMode || !this.sheets) {
-      const idx = MOCK_INVENTORY.findIndex((_, i) => i + 1 === rowIndex);
-      if (idx !== -1) Object.assign(MOCK_INVENTORY[idx], listing);
-      this.invalidateCache();
-      return listing;
+    if (!this.sheets) {
+      throw new Error('Google Sheets API is not connected. Cannot update listing.');
     }
 
     try {
@@ -672,7 +659,7 @@ class SheetsService {
       const headerMap = buildHeaderMap(headerRow);
 
       // Build the updated row array
-      const updatedRow = new Array(Math.max(headerRow.length, 9)).fill('');
+      const updatedRow = new Array(Math.max(headerRow.length, 10)).fill('');
       const fieldMappings = {
         ownerName: listing.ownerName || '',
         ownerContact: listing.ownerContact || '',
@@ -682,7 +669,8 @@ class SheetsService {
         propertyName: listing.propertyName || '',
         projectName: listing.projectName || '',
         sector: listing.sector || '',
-        additionalNotes: listing.additionalNotes || ''
+        additionalNotes: listing.additionalNotes || '',
+        availability: listing.availability || 'Available'
       };
 
       Object.entries(fieldMappings).forEach(([field, val]) => {
@@ -709,11 +697,8 @@ class SheetsService {
    * Delete a property row by its sheet row number (1-indexed)
    */
   async deleteListing(rowIndex) {
-    if (this.mockMode || !this.sheets) {
-      const idx = MOCK_INVENTORY.findIndex((_, i) => i + 2 === rowIndex); // +2 for header
-      if (idx !== -1) MOCK_INVENTORY.splice(idx, 1);
-      this.invalidateCache();
-      return true;
+    if (!this.sheets) {
+      throw new Error('Google Sheets API is not connected. Cannot delete listing.');
     }
 
     try {

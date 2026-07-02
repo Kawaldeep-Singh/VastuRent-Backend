@@ -121,12 +121,7 @@ app.post('/api/settings', authMiddleware, (req, res) => {
       process.env.MOCK_MODE === 'true'
     );
 
-    if (mockMode === false && sheetsService.mockMode === true) {
-      return res.status(400).json({
-        success: false,
-        error: `Authentication failed: ${sheetsService.lastError || 'Invalid credentials or Spreadsheet ID'}`
-      });
-    }
+
 
     // Save parameters back to .env file for physical persistence
     const envPath = path.resolve(__dirname, '../.env');
@@ -140,7 +135,7 @@ app.post('/api/settings', authMiddleware, (req, res) => {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
       GOOGLE_SPREADSHEET_ID: process.env.GOOGLE_SPREADSHEET_ID || '',
       GOOGLE_CREDENTIALS_JSON: process.env.GOOGLE_CREDENTIALS_JSON || '',
-      MOCK_MODE: process.env.MOCK_MODE || 'true',
+      MOCK_MODE: process.env.MOCK_MODE || 'false',
       BROKER_NAME: process.env.BROKER_NAME || 'Kawal',
       AGENCY_NAME: process.env.AGENCY_NAME || 'Vastu Rentals'
     };

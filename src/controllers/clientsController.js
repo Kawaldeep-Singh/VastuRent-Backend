@@ -26,6 +26,15 @@ exports.addClient = async (req, res) => {
       return res.status(400).json({ success: false, error: 'At least Name or Phone is required.' });
     }
 
+    if (phone) {
+      const clients = await clientsService.getClients();
+      const cleanPhone = str => (str || '').replace(/\D/g, '').slice(-10);
+      const inputPhone = cleanPhone(phone);
+      if (inputPhone && clients.some(c => cleanPhone(c.phone) === inputPhone)) {
+        return res.status(400).json({ success: false, error: 'A client with this phone number already exists.' });
+      }
+    }
+
     const clientData = { name: name || '', phone: phone || '', bhk: bhk || '', budget: budget || '', sector: sector || '', furnishing: furnishing || '', tenantType: tenantType || '', remarks: remarks || '', status: status || 'Active' };
     const newClient = await clientsService.addClient(clientData);
     return res.status(201).json({ success: true, message: 'Client added successfully.', client: newClient });
